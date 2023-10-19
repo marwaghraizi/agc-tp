@@ -108,26 +108,17 @@ def dereplication_fulllength(amplicon_file: Path, minseqlen: int, mincount: int)
     :return: A generator object that provides a (list)[sequences, count] of sequence with a count >= mincount and a length >= minseqlen.
     """
     seq_count = {}
-    # another way with counter
-
-    #all_sequences = list(read_fasta(amplicon_file, minseqlen))
-   # unique_sequences = set(all_sequences)
-    #for seq in unique_sequences:
-        #seq_count = seq.count(all_sequences)
-        #if seq._count >= mincount:
-            #yield [seq, seq_count]
     
-    
-    for sequence in list(read_fasta(amplicon_file, minseqlen)):
+    for i,sequence in enumerate(read_fasta(amplicon_file, minseqlen)):
         if sequence in seq_count:
             seq_count[sequence] += 1
         else:
             seq_count[sequence] = 1
-
-    seq_count = sorted(seq_count.items(), key=lambda x:x[1], reverse=True) 
-    for (seq, count) in seq_count:
+    for (seq, count) in sorted(seq_count.items(), key=lambda item:item[1], reverse=True):
         if count >= mincount:
             yield [seq, count]
+
+
 
 def get_identity(alignment_list: List[str]) -> float:
     """Compute the identity rate between two sequences
@@ -135,13 +126,10 @@ def get_identity(alignment_list: List[str]) -> float:
     :param alignment_list:  (list) A list of aligned sequences in the format ["SE-QUENCE1", "SE-QUENCE2"]
     :return: (float) The rate of identity between the two sequences.
     """
-    #alignment = nw.global_align(alignment_list[0], alignment_list[1], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
-    print(alignment_list)
     alignment_length = len(alignment_list[0])
     
     common_nucleotides = sum(1 for i in range(alignment_length) if alignment_list[0][i] == alignment_list[1][i])
     id = common_nucleotides/alignment_length*100
-    print(id)
     return id
 
 def abundance_greedy_clustering(amplicon_file: Path, minseqlen: int, mincount: int, chunk_size: int, kmer_size: int) -> List:
@@ -155,22 +143,24 @@ def abundance_greedy_clustering(amplicon_file: Path, minseqlen: int, mincount: i
     :param kmer_size: (int) A fournir mais non utilise cette annee
     :return: (list) A list of all the [OTU (str), count (int)] .
     """
-    seqs_list = list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
-
-    OTU_bank = []
-    first_seq = seqs_list[0][0]
-    OTU_bank.append([first_seq,seqs_list[0][1]])
+    seqs_gen = dereplication_fulllength(amplicon_file, minseqlen, mincount)
+    OTU_bank = [next(seqs_gen)]
     
-    for seq_info in seqs_list[1:]:
-        for otu_seq_info in OTU_bank:
-            seq = seq_info[0]
-            count = seq_info[1]
-            otu_seq = otu_seq_info[0]
+    for i, seq_info in enumerate(seqs_gen):
+            
+        if i % 100 == 0:
+            print(i)
+        unique = True
+        for j,otu_seq_info in enumerate(OTU_bank):
+
         
-            alignment = nw.global_align(seq, otu_seq, gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
-            id = get_identity(list(alignment))
-            if id <= 97:
-                OTU_bank.append([seq,count])
+            alignment = nw.global_align(seq_info[0], otu_seq_info[0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
+            id = get_identity(alignment)
+            if id > 97:
+                unique = False
+                break
+        if unique:
+            OTU_bank.append([seq_info[0],seq_info[1]])
 
     return OTU_bank
 
@@ -181,6 +171,7 @@ def write_OTU(OTU_list: List, output_file: Path) -> None:
     :param OTU_list: (list) A list of OTU sequences
     :param output_file: (Path) Path to the output file
     """
+    print("arrived")
     with open(output_file, "w") as filout:
         for i, (otu, count) in enumerate(OTU_list):
             filout.write(f">OTU_{i+1} occurrence:{count}\n")
@@ -197,12 +188,12 @@ def main(): # pragma: no cover
     """
     # Get arguments
     args = get_arguments()
-    #fasta_zipped = args.amplicon_file
-    #minseqlen = args.minseqlen
-    #mincount = args.mincount
-    get_identity(["TGGGGAATATTGCACAATGGGCGCAAGCCTG-ATGCAG", "TGGGGAATA--GCACAATGGGCGCAAGCCTCTAGCAG"])
-    # Votre programme ici
-
+    amplicon_file = args.amplicon_file
+    minseqlen = args.minseqlen
+    mincount = args.mincount
+    #output_file = args.output_file
+    otu_bank = abundance_greedy_clustering(amplicon_file, minseqlen, mincount, 0, 0) 
+    write_OTU(otu_bank, 'OTU.fasta')
 
 
 if __name__ == '__main__':
