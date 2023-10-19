@@ -155,10 +155,24 @@ def abundance_greedy_clustering(amplicon_file: Path, minseqlen: int, mincount: i
     :param kmer_size: (int) A fournir mais non utilise cette annee
     :return: (list) A list of all the [OTU (str), count (int)] .
     """
-    # align the first with all the sequences and add it to OTU bank if it exceeds 97% with any of them
-    # align the second to the OTU bank
-    # align the third to the OTU bank
+    seqs_list = list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
 
+    OTU_bank = []
+    first_seq = seqs_list[0][0]
+    OTU_bank.append([first_seq,seqs_list[0][1]])
+    
+    for seq_info in seqs_list[1:]:
+        for otu_seq_info in OTU_bank:
+            seq = seq_info[0]
+            count = seq_info[1]
+            otu_seq = otu_seq_info[0]
+        
+            alignment = nw.global_align(seq, otu_seq, gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
+            id = get_identity(list(alignment))
+            if id <= 97:
+                OTU_bank.append([seq,count])
+
+    return OTU_bank
 
 
 def write_OTU(OTU_list: List, output_file: Path) -> None:
@@ -167,7 +181,11 @@ def write_OTU(OTU_list: List, output_file: Path) -> None:
     :param OTU_list: (list) A list of OTU sequences
     :param output_file: (Path) Path to the output file
     """
-    pass
+    with open(output_file, "w") as filout:
+        for i, (otu, count) in enumerate(OTU_list):
+            filout.write(f">OTU_{i+1} occurrence:{count}\n")
+            wrapped_sequence = textwrap.fill(otu, width=80)
+            filout.write(wrapped_sequence + "\n")
 
 
 #==============================================================
