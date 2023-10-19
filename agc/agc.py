@@ -19,12 +19,14 @@ import os
 import gzip
 import statistics
 import textwrap
+import numpy as np
 from pathlib import Path
 from collections import Counter
 from typing import Iterator, Dict, List
 # https://github.com/briney/nwalign3
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw
+np.int = int
 
 __author__ = "Marwa Ghraizi"
 __copyright__ = "Universite Paris Diderot"
@@ -133,7 +135,14 @@ def get_identity(alignment_list: List[str]) -> float:
     :param alignment_list:  (list) A list of aligned sequences in the format ["SE-QUENCE1", "SE-QUENCE2"]
     :return: (float) The rate of identity between the two sequences.
     """
-    pass
+    #alignment = nw.global_align(alignment_list[0], alignment_list[1], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
+    print(alignment_list)
+    alignment_length = len(alignment_list[0])
+    
+    common_nucleotides = sum(1 for i in range(alignment_length) if alignment_list[0][i] == alignment_list[1][i])
+    id = common_nucleotides/alignment_length*100
+    print(id)
+    return id
 
 def abundance_greedy_clustering(amplicon_file: Path, minseqlen: int, mincount: int, chunk_size: int, kmer_size: int) -> List:
     """Compute an abundance greedy clustering regarding sequence count and identity.
@@ -146,7 +155,10 @@ def abundance_greedy_clustering(amplicon_file: Path, minseqlen: int, mincount: i
     :param kmer_size: (int) A fournir mais non utilise cette annee
     :return: (list) A list of all the [OTU (str), count (int)] .
     """
-    pass
+    # align the first with all the sequences and add it to OTU bank if it exceeds 97% with any of them
+    # align the second to the OTU bank
+    # align the third to the OTU bank
+
 
 
 def write_OTU(OTU_list: List, output_file: Path) -> None:
@@ -167,6 +179,10 @@ def main(): # pragma: no cover
     """
     # Get arguments
     args = get_arguments()
+    #fasta_zipped = args.amplicon_file
+    #minseqlen = args.minseqlen
+    #mincount = args.mincount
+    get_identity(["TGGGGAATATTGCACAATGGGCGCAAGCCTG-ATGCAG", "TGGGGAATA--GCACAATGGGCGCAAGCCTCTAGCAG"])
     # Votre programme ici
 
 
